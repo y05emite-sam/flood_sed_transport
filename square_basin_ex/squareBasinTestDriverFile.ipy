@@ -1,0 +1,173 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Thu Jun  9 18:22:27 2022
+@author: angelmonsalve
+
+Driver file for: Case 3a bedload model comparison - no subsurface updating 
+
+"""
+
+""" Loads components and other libraries"""
+%reset -f
+import numpy as np
+import pandas as pd
+import copy
+import os
+import shutil
+from matplotlib import pyplot as plt
+from landlab.components import OverlandFlowSpatiallyVariableInputs, RiverBedDynamics
+from landlab.io import read_esri_ascii
+from landlab import imshow_grid
+
+""" Numerical simulation conditions and time control settings"""
+bedElevation = 'Square_TestBasin.asc'         # ASCII raster DEM containing the bed surface elevation
+rainfallFile = 'rainfallIntensity.xlsx'
+gsd = pd.read_excel('bedGSD.xlsx',sheet_name='GSD',skiprows=0).values
+
+dtPrecision = 3             # Avoids rounding errors
+max_dt = 1                # Overland flow will use the min time step between this value and the automatically calculated. Use seconds.
+tPlot = 60                  # Plots will be obtained every this seconds
+storeData = 10              # Stores results every this time
+tmax = 3600+max_dt          # Maximum simulation time, adding max_dt ensures that the last time is stored
+
+# Flow, bed, and upstream simulation conditions 
+n = 0.03                            # Manning's n
+
+# Link and node where samples will be collected
+link_to_sample = 698
+node_to_sample = 300
+
+# Remove previous figures
+directory = os.getcwd() ; test = os.listdir( directory )
+
+for item in test:
+    if item.endswith(".png"):
+        os.remove( os.path.join( directory, item ) )
+    if item.endswith(".txt"):
+        os.remove( os.path.join( directory, item ) )  
+        
+# Creates fields and instantiate the component
+OverlandFlowSpatiallyVariableInputs.input_var_names
+RiverBedDynamics.input_var_names
+(rmg, z) = read_esri_ascii(bedElevation, name='topographic__elevation')
+rmg.add_zeros('bed_surface__roughness', at = 'link')
+rmg.add_zeros('surface_water__depth', at = 'node')
+rmg.add_zeros('rainfall__intensity', at = 'node')
+rmg['node']['bed_surface__grainSizeDistribution_location'] = np.zeros_like(z)     
+
+# Instantiation of components
+of = OverlandFlowSpatiallyVariableInputs(rmg, dt_max=max_dt, alpha=0.3, steep_slopes=False)
+rbd = RiverBedDynamics(rmg , gsd = gsd, variableCriticalShearStress = True, bedloadEq='MPM')
+
+# Set boundaries as closed boundaries, the outlet is set to an open boundary. 
+#rmg.set_watershed_boundary_condition_outlet_id([69,104], z, 45.)
+rmg.set_watershed_boundary_condition(z)
+
+# Create bed and flow initial condition
+rmg['link']['bed_surface__roughness'] = np.zeros(rmg.number_of_links) + n   # n is Manning's roughness coefficient
+
+precipitation = pd.read_excel(rainfallFile)
+precip_time=precipitation.values[:,0]
+precip_mmhr=precipitation.values[:,1]
+precip_ms = precip_mmhr * (2.77778 * 10 ** -7)  # Converts mm/hr to m/s
+precip_index = 0                                # current index for time
+
+""" Defines some variables to store data and run the actual simulation """
+storeNow = True
+plotNow = True                          # Used to save the plot at time zero
+check_tmax = True
+tPlotOrg=copy.deepcopy(tPlot)           # A copy of tPlot
+storeDataOrg=copy.deepcopy(storeData)   # A copy of tPlot
+outputFolder = 'output'
+cwd = os.getcwd()
+
+if os.path.exists(outputFolder):
+    print('The folder') 
+    print(outputFolder)
+    print('Exists and it will be removed \n');
+    shutil.rmtree(outputFolder)     
+os.mkdir(outputFolder)
+
+""" Now runs the actual simulation """
+t = 0                                   # Initializates the variable
+while t < tmax:
+    
+    rbd.t = t           # Current simulation time
+    
+    #Calculates the rainfall intensity - variable in time
+    if (t >= precip_time[precip_index+1]):
+        rmg['node']['rainfall__intensity'] =  np.zeros(rmg.number_of_nodes) + precip_ms[precip_index+1]
+        precip_index += 1
+    else:
+        rmg['node']['rainfall__intensity'] = np.zeros(rmg.number_of_nodes) + precip_ms[precip_index+1]
+    
+    of.overland_flow()  # Runs overland flow for one time step
+    rbd.run_one_step()  # Runs riverBedDynamics for one time step
+    
+    ## Stores results
+    storeData = round(storeData-of.dt, dtPrecision)
+    if (storeData <=0) or storeNow:
+        os.chdir(outputFolder)
+        print('Storing results at time :',np.round(t,1),' s \n')
+        data = np.hstack([t,(np.abs(of._q[link_to_sample] * rmg.dx).T)])
+        with open("output0_links_surface_water__discharge.txt", "ab") as f:
+            np.savetxt(f, data,'%.3f')
+        data = np.hstack([t,(of._h[node_to_sample].T)])
+        with open("output1_node_surface_water__depth.txt", "ab") as f:
+            np.savetxt(f, data,'%.3f')      
+        data = np.hstack([t,np.abs(rbd._tau[link_to_sample].T)])
+        with open("output2_link_surface_water__shearStress.txt", "ab") as f:
+            np.savetxt(f, data,'%.3f')   
+        data = np.hstack([t,rmg.at_node["topographic__elevation"][node_to_sample].T])
+        with open("output3_node_topographic__elevation.txt", "ab") as f:
+            np.savetxt(f, data,'%.3f') 
+        data = np.hstack([t,rmg.at_link["bed_surface__medianSize"][link_to_sample].T])
+        with open("output4_link_bed_surface__medianSize.txt", "ab") as f:
+            np.savetxt(f, data,'%.3f')
+        data = np.hstack([t,rmg.at_link['sediment_transport__bedloadRate'][link_to_sample].T])
+        with open("output5_links_sediment_transport__bedloadRate.txt", "ab") as f:
+            np.savetxt(f, data,'%.5f')  
+        storeData = round(storeDataOrg, dtPrecision)
+        storeNow = False
+        os.chdir(cwd)
+
+    tPlot = round(tPlot-of.dt, dtPrecision)
+    if tPlot <= 0  or plotNow:
+        os.chdir(outputFolder)
+        print('Elapsed time :',np.round(t,1),' s. Current dt =',\
+              np.round(of.dt,1),'. Adaptive time =',np.round(of._adaptive_dt,1),' s - Saving plot \n')
+        
+        # Water depth plot
+        plot_name='Surface water depth [m] at ' + str(np.round(t,0)) + ' sec'
+        imshow_grid(rmg, 'surface_water__depth',cmap='Blues',vmin=0,vmax=0.01,plot_name=plot_name)
+        output='depth_'+str(np.round(t,0))+'.png'
+        plt.savefig(output,dpi=300); plt.close()  
+
+        #Bed surface elevation plot
+        plot_name='Bed surface elevation [m] at ' + str(np.round(t,0)) + ' sec'
+        ZBed = rmg.at_node["topographic__elevation"]
+        imshow_grid(rmg, ZBed ,cmap='RdGy',vmin=0,vmax=240,plot_name=plot_name)
+        output='topographicElevation_'+str(np.round(t,0))+'.png'
+        plt.savefig(output,dpi=300); plt.close()  
+        
+        #Bed surface variation plot
+        plot_name='Bed surface elevation variation [m] at ' + str(np.round(t,0)) + ' sec'
+        ZVar = rmg.at_node["topographic__elevation"] - rmg.at_node['topographic__elevation_original'] 
+        imshow_grid(rmg, ZVar,cmap='RdGy',vmin=-0.10,vmax=0.10,plot_name=plot_name)
+        output='topographicVariation_'+str(np.round(t,0))+'.png'
+        plt.savefig(output,dpi=300); plt.close()    
+
+        plotNow = False
+        tPlot = tPlotOrg
+        os.chdir(cwd)
+
+    # Updating t
+    if (t + of.dt > tmax) and check_tmax:
+        of.dt = tmax - t
+        t = tmax
+        storeDataNow = True  
+        plotNow = True
+        check_tmax = False
+    else:
+        t = round(t + of.dt, dtPrecision)  
+    
