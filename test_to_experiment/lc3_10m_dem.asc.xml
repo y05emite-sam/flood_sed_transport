@@ -1,0 +1,2 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<metadata xml:lang="en"><Esri><CreaDate>20211109</CreaDate><CreaTime>15073500</CreaTime><ArcGISFormat>1.0</ArcGISFormat><SyncOnce>TRUE</SyncOnce><DataProperties><lineage><Process ToolSource="c:\program files (x86)\arcgis\desktop10.7\ArcToolbox\Toolboxes\Conversion Tools.tbx\RasterToASCII" Date="20211109" Time="150735">RasterToASCII lc3_10m_dem C:\Users\Sam\Documents\Sam\flood_project\code\input\DEMS\10m_asc\lc3_10m_dem.asc</Process></lineage></DataProperties></Esri></metadata>
