@@ -20,7 +20,9 @@ from landlab.io import read_esri_ascii
 from landlab import imshow_grid
 
 """ Numerical simulation conditions and time control settings"""
-bedElevation = 'lc3_10m_dem - Copy.asc'         # ASCII raster DEM containing the bed surface elevation
+watershed_dem = 'lc3_dem_test.txt'
+(rmg, z) = read_esri_ascii(watershed_dem, name='topographic__elevation')
+# bedElevation = 'lc3_10m_dem.asc'         # ASCII raster DEM containing the bed surface elevation
 rainfallFile = 'precip_data.xlsx'
 gsd = pd.read_excel('LC3_grain_size_dist.xlsx',sheet_name='GSD',skiprows=0).values
 
@@ -49,11 +51,16 @@ for item in test:
 # Creates fields and instantiate the component
 OverlandFlowSpatiallyVariableInputs.input_var_names
 RiverBedDynamics.input_var_names
-(rmg, z) = read_esri_ascii(bedElevation, name='topographic__elevation')
+# (rmg, z) = read_esri_ascii(bedElevation, name='topographic__elevation')
 rmg.add_zeros('bed_surface__roughness', at = 'link')
 rmg.add_zeros('surface_water__depth', at = 'node')
 rmg.add_zeros('rainfall__intensity', at = 'node')
 rmg['node']['bed_surface__grainSizeDistribution_location'] = np.zeros_like(z)     
+
+rmg.at_node['topographic__slope'] = rmg.calc_slope_at_node(elevs='topographic__elevation')
+imshow_grid(rmg,'topographic__slope');
+plt.show()
+
 
 # Instantiation of components
 of = OverlandFlowSpatiallyVariableInputs(rmg, dt_max=max_dt, alpha=0.3, steep_slopes=False)
