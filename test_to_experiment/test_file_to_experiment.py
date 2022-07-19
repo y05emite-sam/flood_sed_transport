@@ -20,7 +20,7 @@ from landlab.io import read_esri_ascii
 from landlab import imshow_grid
 
 """ Numerical simulation conditions and time control settings"""
-bedElevation = 'lc3_10m_dem.asc'         # ASCII raster DEM containing the bed surface elevation
+bedElevation = 'lc3_10m_dem - Copy.asc'         # ASCII raster DEM containing the bed surface elevation
 rainfallFile = 'precip_data.xlsx'
 gsd = pd.read_excel('LC3_grain_size_dist.xlsx',sheet_name='GSD',skiprows=0).values
 
@@ -59,10 +59,13 @@ rmg['node']['bed_surface__grainSizeDistribution_location'] = np.zeros_like(z)
 of = OverlandFlowSpatiallyVariableInputs(rmg, dt_max=max_dt, alpha=0.3, steep_slopes=False)
 rbd = RiverBedDynamics(rmg , gsd = gsd, variableCriticalShearStress = True, bedloadEq='MPM')
 
-# Set boundaries as closed boundaries, the outlet is set to an open boundary. 
-#rmg.set_watershed_boundary_condition_outlet_id([69,104], z, 45.)
-rmg.set_watershed_boundary_condition([224,117], z)
+#z1 = z.reshape(382,469)
+#print(np.where(z1==1382.996))
 
+# Set boundaries as closed boundaries, the outlet is set to an open boundary. 
+#rmg.set_watershed_boundary_condition_outlet_id([354,48], z, nodata_value=-9999.) #[col,row] = [382,469] : 166074
+outlet = rmg.set_watershed_boundary_condition(z, remove_disconnected=True, nodata_value=-9999., return_outlet_id=True) #1382.996
+print(outlet)
 # Create bed and flow initial condition
 rmg['link']['bed_surface__roughness'] = np.zeros(rmg.number_of_links) + n   # n is Manning's roughness coefficient
 
