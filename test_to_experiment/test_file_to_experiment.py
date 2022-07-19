@@ -23,7 +23,7 @@ from landlab import imshow_grid
 watershed_dem = 'lc3_dem_test.txt'
 (rmg, z) = read_esri_ascii(watershed_dem, name='topographic__elevation')
 # bedElevation = 'lc3_10m_dem.asc'         # ASCII raster DEM containing the bed surface elevation
-rainfallFile = 'precip_data.xlsx'
+rainfallFile = '5min_1yrRI_storm.xlsx'
 gsd = pd.read_excel('LC3_grain_size_dist.xlsx',sheet_name='GSD',skiprows=0).values
 
 dtPrecision = 3             # Avoids rounding errors
