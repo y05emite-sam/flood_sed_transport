@@ -28,7 +28,7 @@ gsd = pd.read_excel('LC3_grain_size_dist.xlsx',sheet_name='GSD',skiprows=0).valu
 
 dtPrecision = 3             # Avoids rounding errors
 max_dt = 1                  # Overland flow will use the min time step between this value and the automatically calculated. Use seconds.
-tPlot = 60                  # Plots will be obtained every this seconds
+tPlot = 600                  # Plots will be obtained every this seconds
 storeData = 10              # Stores results every this time
 tmax = 3600+max_dt          # Maximum simulation time, adding max_dt ensures that the last time is stored
 
