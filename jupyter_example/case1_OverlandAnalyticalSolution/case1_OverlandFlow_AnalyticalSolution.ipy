@@ -1,0 +1,132 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Mon May 16 12:27:41 2022
+
+@author: angelmonsalve
+
+Driver file for: Case 1 - OverlandFlow Anlytical Solution 
+
+Mesh size must be selected with the respective Raster file
+"""
+
+""" Loads componesnts and other libraries"""
+%reset -f
+import numpy as np
+import copy
+from matplotlib import pyplot as plt
+from landlab.components import OverlandFlowSpatiallyVariableInputs
+from landlab.io import read_esri_ascii
+from landlab import imshow_grid
+
+""" Numerical simulation conditions and time control settings"""
+bedElevationDEM = 'bedElevationDEM_dx5.asc'           # ASCII raster DEM containing the bed surface elevation
+n = 0.03        # Manning's n
+u = 1.0         # Constant velocity at the left edge flowing in the positive x direction - Boundary condition
+dtPrecision = 3 # Avoids rounding errors
+tPlot = 100     # Plots will be obtained every this seconds [s]
+storeData = 100 # Stores results every this time
+tmax = 3600     # Maximum simulation time [s]
+hMax = 3.0      # Maximum h expected - Used only for plots
+h_init = 0.001  # Initial water depth [m]
+
+""" Now everything are calculations, no more inputs are required"""       
+# what are the variables names requiered by all components used? These lines display the required variables
+OverlandFlowSpatiallyVariableInputs.input_var_names
+
+# Reads all rasters containing bed elevation, roughness, GSD location, and Rainfall intensity
+(rmg, z) = read_esri_ascii(bedElevationDEM, name='topographic__elevation') 
+rmg['link']['bed_surface__roughness'] = np.zeros(rmg.number_of_links) + n
+rmg['node']['rainfall_intensity'] = np.zeros(rmg.number_of_nodes) 
+
+# Creating all topographic, sediment, and flow variables
+rmg.add_zeros('surface_water__depth', at = 'node')
+
+# Set boundaries as closed boundaries
+rmg.set_closed_boundaries_at_grid_edges(True,True,True,True)  
+
+# Instantiation according to Adams et al 2017
+of = OverlandFlowSpatiallyVariableInputs(rmg, h_init = h_init, steep_slopes = False, theta = 1.0, alpha = 0.7, dt_max = 7.5)
+
+# ID for boundary nodes
+# First we need to generate a list with the west-east nodes ID next to the left edge
+# For a 120 columns raster these will be 121 241 361 etc..
+nodesBoundary_Id = np.arange(rmg.number_of_node_columns,rmg.number_of_node_columns*(rmg.number_of_node_rows-1),(rmg.number_of_node_columns))
+
+# ID for boundary links
+# Now we need to generate a list with the west-east links ID at the left edge
+# For a 120 columns raster these will be 240 479 718 etc..
+linksBoundary_Id = np.arange((2*rmg.number_of_node_columns)-1,rmg.number_of_links,(2*rmg.number_of_node_columns)-1)
+
+# Defines some variables to store data
+t = 0                                   # Initializates the variable
+storeDataNow = True                     # Used to save the plot at time zero and tmax
+plotNow = True                          # Used to save the plot at time zero and tmax
+check_tmax = True
+tPlotOrg=copy.deepcopy(tPlot)           # A copy of tPlot
+storeDataOrg=copy.deepcopy(storeData)   # A copy of tPlot
+
+while t <= tmax:
+    
+    h_boundary = np.max((0.001,(7/3 * n**2 * u**3 * t) ** (3/7)))
+    q_boundary = u * h_boundary
+    
+    # Updates data in the grid
+    rmg["node"]["surface_water__depth"][nodesBoundary_Id] = h_boundary
+    rmg["link"]["surface_water__depth"][linksBoundary_Id] = h_boundary
+    rmg["link"]["surface_water__discharge"][linksBoundary_Id] = q_boundary
+    of.overland_flow()  # Runs overland flow for one time step
+    
+    ## Stores results
+    storeData = round(storeData-of.dt, dtPrecision)
+    if (storeData <= 0) or storeDataNow:
+        print('Storing results at time :',np.round(t,1),' s')      
+        data = np.reshape(np.hstack([t,(of._h.T)]),[1,rmg.number_of_nodes+1])
+        with open("output1_node_surface_water__depth.txt", "ab") as f:
+            np.savetxt(f, data,'%.3f')              
+        storeData = round(storeDataOrg, dtPrecision)
+        storeDataNow = False
+
+    tPlot = round(tPlot-of.dt, dtPrecision)
+    if tPlot <= 0  or plotNow:
+        print('Elapsed time :',np.round(t,1),' s. Current dt =',\
+              np.round(of.dt,1),'. Adaptive time =',np.round(of._adaptive_dt,1),' s - Saving plot')
+        
+        """ Water depth plot"""
+        plot_name='Surface water depth [m] at ' + str(np.round(t,0)) + ' sec'
+        imshow_grid(rmg, 'surface_water__depth',cmap='Blues',vmin=0,vmax=hMax,plot_name=plot_name)
+        output='depth_'+str(np.round(t,0))+'.png'
+        plt.savefig(output,dpi=300); plt.close()   
+               
+        plotNow = False
+        tPlot = tPlotOrg
+
+    ## Updating t
+    if (t + of.dt > tmax) and check_tmax:
+        of.dt = tmax - t
+        t = tmax
+        storeDataNow = True  
+        plotNow = True
+        check_tmax = False
+    else:
+        t = round(t + of.dt, dtPrecision)
+    
+# Results
+## Water depth at the end of the simulation
+data = np.loadtxt('output1_node_surface_water__depth.txt')
+nodesToSample = np.arange(rmg.number_of_node_columns+1,2*rmg.number_of_node_columns)
+x = np.arange(0,(rmg.number_of_node_columns-1)*rmg.dx,rmg.dx)
+
+hSample = data[-1,nodesToSample]
+
+hAnalytical = np.zeros_like(x)+h_init
+hAnalytical[np.where(x<u*tmax)] =(-7/3 * (n**2 * u**2 * (x[np.where(x<u*tmax)]-u*tmax)))**(3/7)
+
+plt.figure(1)
+plt.plot(x, hSample, color='mediumblue')
+plt.plot(x, hAnalytical, color='black')
+plt.ylabel('Water depth (m)')
+plt.xlabel('x (x)')
+plt.ylim(0,2.5)
+plt.xlim(0,5000)
+plt.title('Water depth at 3600 s')
+plt.savefig('WaterDepth.png',dpi=300);plt.close()
