@@ -26,12 +26,36 @@ but I havent gotten around it it yet. currently trying to get the model to run
 and show different grain sizes in the different locations. NOTE: column 1 in the
 gsd file is data for the 'shallow' channel section (above 1560m elevation), 2 
 is 1530m - 1560m elevation, and 3 is steep- elevation lower than 1530. 
+
+The two DEM's are called:
+    lc3_dem.txt
+    and lc1_dem.txt
+    
+The corresponding GSD info for LC1 is...
+    LC1_grain_size_dist.xlsx
+    and LC1_gsd_locations.txt
+    
+...and for LC3 is 
+    LC3_grain_size_dist.xlsx
+    and LC3_gsd_locations.txt    
 """
-watershed_dem = 'lc3_dem.txt'
+#This imports the DEM
+watershed_dem = 'lc3_dem.txt' 
 (rmg, z) = read_esri_ascii(watershed_dem, name='topographic__elevation')
+
+# This stuff is precip data
 rainfallFile = '5min_1yrRI_storm.xlsx'
 precipitation = pd.read_excel(rainfallFile)
+
+# These import the three sediment size distributions
 gsd = pd.read_excel('LC3_grain_size_dist.xlsx',sheet_name='GSD',skiprows=0).values
+
+# And this specifies the lcation of the three GSD's
+bedGSDLocationRaster = 'LC3_gsd_locations.txt'     
+
+(rmg0, gsd_loc) = read_esri_ascii(bedGSDLocationRaster)
+
+rmg['node']['bed_surface__grainSizeDistribution_location'] = gsd_loc   
 
 
 """ this is info regarding time, and plotting stuff. remember some of the storms
@@ -71,7 +95,7 @@ RiverBedDynamics.input_var_names
 rmg.add_zeros('bed_surface__roughness', at = 'link')
 rmg.add_zeros('surface_water__depth', at = 'node')
 rmg.add_zeros('rainfall__intensity', at = 'node')
-rmg['node']['bed_surface__grainSizeDistribution_location'] = np.zeros_like(z)     
+#rmg['node']['bed_surface__grainSizeDistribution_location'] = np.zeros_like(z)     
 
 """this generates a slope map, I put it in to check and see that the DEM was 
 imported correctly"""
