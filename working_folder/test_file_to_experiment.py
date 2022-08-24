@@ -9,6 +9,7 @@ notebook tutorial for the new river bed dynamics component
 """
 
 """ first we imporant all necessary components and other stuff"""
+
 #%reset -f
 import numpy as np
 import pandas as pd
@@ -39,12 +40,13 @@ The corresponding GSD info for LC1 is...
     LC3_grain_size_dist.xlsx
     and LC3_gsd_locations.txt    
 """
+
 #This imports the DEM
 watershed_dem = 'lc3_dem.txt' 
 (rmg, z) = read_esri_ascii(watershed_dem, name='topographic__elevation')
 
 # This stuff is precip data
-rainfallFile = '5min_1yrRI_storm.xlsx'
+rainfallFile = '5min_1000yrRI_storm.xlsx'
 precipitation = pd.read_excel(rainfallFile)
 
 # These import the three sediment size distributions
@@ -66,7 +68,7 @@ dtPrecision = 3             # Avoids rounding errors
 max_dt = 1                  # Overland flow will use the min time step between this value and the automatically calculated. Use seconds.
 tPlot = 600                  # Plots will be obtained every this seconds
 storeData = 10              # Stores results every this time
-tmax = 3600 + max_dt          # Maximum simulation time, adding max_dt ensures that the last time is stored
+tmax = 6000 + max_dt          # Maximum simulation time, adding max_dt ensures that the last time is stored
 
 """mmanning's n value (roughness), prolly wont be changed"""
 n = 0.03                            
@@ -106,7 +108,7 @@ plt.show()
 
 """ this instatiates the two components that are needed to run the model,
 i didnt comment out the two lines below, maybe mikey did?"""
-of = OverlandFlowSpatiallyVariableInputs(rmg, dt_max=max_dt, alpha=0.3, steep_slopes=False)
+of = OverlandFlowSpatiallyVariableInputs(rmg, steep_slopes=True, alpha = 0.3)
 rbd = RiverBedDynamics(rmg , gsd = gsd, variableCriticalShearStress = True, bedloadEq='MPM')
 
 #z1 = z.reshape(382,469)
@@ -115,7 +117,9 @@ rbd = RiverBedDynamics(rmg , gsd = gsd, variableCriticalShearStress = True, bedl
 """ Set boundaries as closed boundaries, the outlet is set to an open boundary. 
 theres some stuff here that is commented out, maybe mikey commited them out when
 he set the boundary conditions?"""
-#rmg.set_watershed_boundary_condition_outlet_id([354,48], z, nodata_value=-9999.) #[col,row] = [382,469] : 166074
+
+#rmg.set_closed_boundaries_at_grid_edges(False, True, True, True)
+rmg.set_watershed_boundary_condition_outlet_id([33999], z, nodata_value=-9999.) #[col,row] = [382,469] : 166074
 outlet = rmg.set_watershed_boundary_condition(z, remove_disconnected=True, nodata_value=-9999., return_outlet_id=True) #1382.996
 print(outlet)
 
@@ -198,21 +202,21 @@ while t < tmax:
         
         # Water depth plot
         plot_name='Surface water depth [m] at ' + str(np.round(t,0)) + ' sec'
-        imshow_grid(rmg, 'surface_water__depth',cmap='Blues',vmin=0,vmax=0.01,plot_name=plot_name)
+        imshow_grid(rmg, 'surface_water__depth',cmap='Blues',vmin=0,plot_name=plot_name)
         output='depth_'+str(np.round(t,0))+'.png'
         plt.savefig(output,dpi=300); plt.close()  
-
+        
         #Bed surface elevation plot
         plot_name='Bed surface elevation [m] at ' + str(np.round(t,0)) + ' sec'
         ZBed = rmg.at_node["topographic__elevation"]
-        imshow_grid(rmg, ZBed ,cmap='RdGy',vmin=0,vmax=240,plot_name=plot_name)
+        imshow_grid(rmg, ZBed ,cmap='RdGy',plot_name=plot_name)
         output='topographicElevation_'+str(np.round(t,0))+'.png'
         plt.savefig(output,dpi=300); plt.close()  
         
         #Bed surface variation plot
         plot_name='Bed surface elevation variation [m] at ' + str(np.round(t,0)) + ' sec'
         ZVar = rmg.at_node["topographic__elevation"] - rmg.at_node['topographic__elevation_original'] 
-        imshow_grid(rmg, ZVar,cmap='RdGy',vmin=-0.10,vmax=0.10,plot_name=plot_name)
+        imshow_grid(rmg, ZVar,cmap='RdGy',plot_name=plot_name)
         output='topographicVariation_'+str(np.round(t,0))+'.png'
         plt.savefig(output,dpi=300); plt.close()    
 
