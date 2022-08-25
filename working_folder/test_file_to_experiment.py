@@ -46,7 +46,7 @@ watershed_dem = 'lc3_dem.txt'
 (rmg, z) = read_esri_ascii(watershed_dem, name='topographic__elevation')
 
 # This stuff is precip data
-rainfallFile = '5min_1000yrRI_storm.xlsx'
+rainfallFile = '5min_1000yrRI_storm_upper_bound.xlsx'
 precipitation = pd.read_excel(rainfallFile)
 
 # These import the three sediment size distributions
