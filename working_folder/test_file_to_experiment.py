@@ -109,7 +109,7 @@ plt.show()
 """ this instatiates the two components that are needed to run the model,
 i didnt comment out the two lines below, maybe mikey did?"""
 of = OverlandFlowSpatiallyVariableInputs(rmg, steep_slopes=True, alpha = 0.3)
-rbd = RiverBedDynamics(rmg , gsd = gsd, variableCriticalShearStress = True, bedloadEq='MPM')
+rbd = RiverBedDynamics(rmg , gsd = gsd, variableCriticalShearStress = True, bedloadEq='WilcockAndCrowe')
 
 #z1 = z.reshape(382,469)
 #print(np.where(z1==1382.996))
