@@ -25,7 +25,9 @@ from landlab import imshow_grid
 
 NOTE: column 1 in the LC3 gsd file is data for the 'shallow' channel section 
 (above 1560m elevation), 2 is 1530m - 1560m elevation, and 3 is steep- 
-elevation lower than 1530.
+elevation lower than 1530. 
+NOTE: For LC1 column 1 is for elevations above 1560 m column 2 is for elevations
+1540 - 1560m and column 3 is for elevations lower than 1540 m in elevation
 
 The two DEM's are called:
     lc3_dem.txt
@@ -67,7 +69,7 @@ rainfallFile = 'climate/5min_1000yrRI_storm.xlsx'
 precipitation = pd.read_excel(rainfallFile)
 
 # These import the three sediment size distributions
-gsd = pd.read_excel('GSDs/LC3_grain_size_dist.xlsx',sheet_name='GSD',skiprows=0).values
+gsd = pd.read_excel('GSDs/LC3_grain_size_dist_higher_res.xlsx', sheet_name='GSD', skiprows=0).values
 
 # And this specifies the lcation of the three GSD's
 bedGSDLocationRaster = 'GSDs/LC3_gsd_locations.txt'     
