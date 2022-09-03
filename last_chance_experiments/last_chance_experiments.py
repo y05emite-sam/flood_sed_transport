@@ -43,7 +43,7 @@ The corresponding GSD info for LC1 is...
 """
 
 #This imports the DEM
-watershed_dem = 'DEMs/lc3_dem.txt' 
+watershed_dem = 'DEMs/lc1_dem.txt' 
 (rmg, z) = read_esri_ascii(watershed_dem, name='topographic__elevation')
 
 """
@@ -69,10 +69,10 @@ rainfallFile = 'climate/5min_1000yrRI_storm.xlsx'
 precipitation = pd.read_excel(rainfallFile)
 
 # These import the three sediment size distributions
-gsd = pd.read_excel('GSDs/LC3_grain_size_dist_higher_res.xlsx', sheet_name='GSD', skiprows=0).values
+gsd = pd.read_excel('GSDs/LC1_grain_size_dist.xlsx', sheet_name='GSD', skiprows=0).values
 
 # And this specifies the lcation of the three GSD's
-bedGSDLocationRaster = 'GSDs/LC3_gsd_locations.txt'     
+bedGSDLocationRaster = 'GSDs/LC1_gsd_locations.txt'     
 
 (rmg0, gsd_loc) = read_esri_ascii(bedGSDLocationRaster)
 
@@ -139,8 +139,12 @@ theres some stuff here that is commented out, maybe mikey commited them out when
 he set the boundary conditions?"""
 
 #rmg.set_closed_boundaries_at_grid_edges(False, True, True, True)
-rmg.set_watershed_boundary_condition_outlet_id([33999], z, nodata_value=-9999.) #[col,row] = [382,469] : 166074
-outlet = rmg.set_watershed_boundary_condition(z, remove_disconnected=True, nodata_value=-9999., return_outlet_id=True) #1382.996
+
+#rmg.set_watershed_boundary_condition_outlet_id([33999], z, nodata_value=-9999.) # This is LC3, works!
+
+rmg.set_watershed_boundary_condition_outlet_coords((218, 93), z, nodata_value=-9999.) # This is LC1 (work in progress), out let is row 218, col 93
+
+outlet = rmg.set_watershed_boundary_condition(z, remove_disconnected = True, nodata_value=-9999., return_outlet_id=True) #1382.996
 print(outlet)
 
 """ Create bed and flow initial condition, remember that n is mannings roughness coefficient"""
