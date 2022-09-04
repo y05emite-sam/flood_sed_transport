@@ -8,9 +8,10 @@ notebook tutorial for the new river bed dynamics component
 
 """
 
-""" first we imporant all necessary components and other stuff"""
+""" 
+Here we imporant all necessary components and other stuff
+"""
 
-#%reset -f
 import numpy as np
 import pandas as pd
 import copy
@@ -21,17 +22,39 @@ from landlab.components import OverlandFlowSpatiallyVariableInputs, RiverBedDyna
 from landlab.io import read_esri_ascii
 from landlab import imshow_grid
 
-""" then we add the dem, grain size distribution info, and precipitation data. 
-
-NOTE: column 1 in the LC3 gsd file is data for the 'shallow' channel section 
-(above 1560m elevation), 2 is 1530m - 1560m elevation, and 3 is steep- 
-elevation lower than 1530. 
-NOTE: For LC1 column 1 is for elevations above 1560 m column 2 is for elevations
-1540 - 1560m and column 3 is for elevations lower than 1540 m in elevation
-
-The two DEM's are called:
+"""
+First we import the DEM. There are two DEMS called:
     lc3_dem.txt
     and lc1_dem.txt
+    
+We then generate a slope map to make sure the DEM was properly imported
+"""
+
+watershed_dem = 'DEMs/lc3_dem.txt' 
+(rmg, z) = read_esri_ascii(watershed_dem, name='topographic__elevation')
+
+rmg.at_node['topographic__slope'] = rmg.calc_slope_at_node(elevs='topographic__elevation')
+imshow_grid(rmg,'topographic__slope');
+plt.show()
+
+"""
+Second, I explain grain sizes. They live in the '/GSDs' folder. Any user can go
+take a look at them. As this project moves formward, I will find a place to
+put the "raw" grain size data, but for now the data is presented in a way that
+this code can understand. 
+
+There are a few different excels in the grain size folder. Note to self: Eventually 
+some of these comments will be readmes or some folder explanation or whatever. 
+Anyways, there are 3 excels which represent real GSDs and were measured with 
+drone photos. 
+
+Column 1, in the LC3 gsd file, are b axis diameters for the 'shallow' channel 
+section (above 1560m elevation), 2 are diameters for 1530m - 1560m elevation,
+and 3 are diameters for steep elevations lower than 1530. 
+
+For LC1 column 1 are diameters for elevations above 1560 m, column 2 are diameters
+for elevations 1540 - 1560m, and column 3 are grain size diameters in elevations
+lower than 1540 m in elevation.
     
 The corresponding GSD info for LC1 is...
     LC1_grain_size_dist.xlsx
@@ -39,12 +62,15 @@ The corresponding GSD info for LC1 is...
     
 ...and for LC3 is 
     LC3_grain_size_dist.xlsx
-    and LC3_gsd_locations.txt    
+    and LC3_gsd_locations.txt   
+    NOTE: LC3 has two gsds, one has more information (it's broken down into smaller
+    bins) this one is called LC3_grain_size_dist_higher_res.xlsx                                                
 """
 
-#This imports the DEM
-watershed_dem = 'DEMs/lc1_dem.txt' 
-(rmg, z) = read_esri_ascii(watershed_dem, name='topographic__elevation')
+gsd = pd.read_excel('GSDs/LC3_grain_size_dist_higher_res.xlsx', sheet_name='GSD', skiprows=0).values
+bedGSDLocationRaster = 'GSDs/LC3_gsd_locations.txt'     
+(rmg0, gsd_loc) = read_esri_ascii(bedGSDLocationRaster)
+rmg['node']['bed_surface__grainSizeDistribution_location'] = gsd_loc 
 
 """
 Here we have precip data
@@ -58,107 +84,86 @@ for example a 5 minute long storm with a 1 year RI would be experessed like so..
 
 5min_1yrRI_storm.xlsx
 
-The only things that need to be changed are the numbers (in this case 5 and 1)
+The only things that need to be changed are the numbers (in this case 5 and 1), and
+sometimes the duration units (min, hours, days)
 
-The shortest storm is 5 minutes, the longest is yet to be determined. The lowest
-RI is 1 and the highest is 1000. Feel free to open the climate folder to decide on 
-a storm to run!
+The shortest storm is 5 minutes, the longest is yet to be determined, but will 
+most likely be one day. The lowest RI is 1 and the highest is 1000. Feel free 
+to open the climate folder to decide on a storm to run!
 """
 
 rainfallFile = 'climate/5min_1000yrRI_storm.xlsx'
-precipitation = pd.read_excel(rainfallFile)
+precipitation = pd.read_excel(rainfallFile)  
+precip_time=precipitation.values[:,0]
+precip_mmhr=precipitation.values[:,1]
+precip_ms = precip_mmhr * (2.77778 * 10 ** -7)  # Converts mm/hr to m/s
+precip_index = 0     
 
-# These import the three sediment size distributions
-gsd = pd.read_excel('GSDs/LC1_grain_size_dist.xlsx', sheet_name='GSD', skiprows=0).values
-
-# And this specifies the lcation of the three GSD's
-bedGSDLocationRaster = 'GSDs/LC1_gsd_locations.txt'     
-
-(rmg0, gsd_loc) = read_esri_ascii(bedGSDLocationRaster)
-
-rmg['node']['bed_surface__grainSizeDistribution_location'] = gsd_loc   
-
-
-""" this is info regarding time, and plotting stuff. remember some of the storms
-will be longer than 3600 seconds, and so that will change depending on the storm
-length. Kinda seems like it takes around 10,000 seconds for water to completely drain
-from LC3.
+""" 
+This is info regarding time, and plotting stuff, and Manning's n. The max possible time for 
+all storms is 100000 seconds,although most storms will not need to be that long
+Kinda seems like it takes around 10,000 seconds for water to completely drain
+from LC3 for a 1000yr RI storm with a duration of one day. 
 """
+
 dtPrecision = 3               # Avoids rounding errors
 max_dt = 1                    # Overland flow will use the min time step between this value and the automatically calculated. Use seconds.
 tPlot = 1000                  # Plots will be obtained every this seconds
 storeData = 1000              # Stores results every this time
 tmax = 2000 + max_dt          # Maximum simulation time, adding max_dt ensures that the last time is stored
+n = 0.03                      # Manning's n      
 
-"""mmanning's n value (roughness), prolly wont be changed"""
-n = 0.03                            
-
-"""Link and node at base of DEM, where samples will be collected, i think mikey 
-changed these numbers?"""
+"""
+Link and node at base of DEM, where samples will be collected, i think mikey 
+changed these numbers? IDK but these need fixing probably
+"""
+#UNDER CONSTRUCTION
 link_to_sample = 698
 node_to_sample = 300
 
-"""This removes previous figs, im not sure I'll keep it because I think it's 
-deleting all the txt files (the DEMS included), and it's getting annoying 
-putting them back in the working folder over and over again. UODATE: I commented
-out the text file removal stuff"""
+"""
+This removes previous figs from the output folder. 
+"""
 directory = os.getcwd() ; test = os.listdir( directory )
-
 for item in test:
     if item.endswith(".png"):
         os.remove( os.path.join( directory, item ) )
-   # if item.endswith(".txt"):
-    #    os.remove( os.path.join( directory, item ) )  
         
-"""Creates fields and instantiate the component"""
+"""
+Creates necessary fields. The roughness field iscurrently uniform.
+"""
 OverlandFlowSpatiallyVariableInputs.input_var_names
 RiverBedDynamics.input_var_names
-# (rmg, z) = read_esri_ascii(bedElevation, name='topographic__elevation')
 rmg.add_zeros('bed_surface__roughness', at = 'link')
 rmg.add_zeros('surface_water__depth', at = 'node')
 rmg.add_zeros('rainfall__intensity', at = 'node')
-#rmg['node']['bed_surface__grainSizeDistribution_location'] = np.zeros_like(z)     
+rmg['link']['bed_surface__roughness'] = np.zeros(rmg.number_of_links) + n
+"""
 
-"""this generates a slope map, I put it in to check and see that the DEM was 
-imported correctly"""
-rmg.at_node['topographic__slope'] = rmg.calc_slope_at_node(elevs='topographic__elevation')
-imshow_grid(rmg,'topographic__slope');
-plt.show()
-
-
-""" this instatiates the two components that are needed to run the model,
-i didnt comment out the two lines below, maybe mikey did?"""
+Instatiates the two components, note that RiverBedDynamics can be changed to 
+a model other than MPM 
+"""
 of = OverlandFlowSpatiallyVariableInputs(rmg, steep_slopes=True, alpha = 0.3)
 rbd = RiverBedDynamics(rmg , gsd = gsd, variableCriticalShearStress = True, bedloadEq='MPM')
 
-#z1 = z.reshape(382,469)
-#print(np.where(z1==1382.996))
+""" 
+This is under construction. As it stands, it works for LC3. Need to figure out LC1.
 
-""" Set boundaries as closed boundaries, the outlet is set to an open boundary. 
-theres some stuff here that is commented out, maybe mikey commited them out when
-he set the boundary conditions?"""
-
-#rmg.set_closed_boundaries_at_grid_edges(False, True, True, True)
+Update: I am gonna remake both 'sheds' using the 10m and the 1m DEM, and just use the auto way
+"""
 
 #rmg.set_watershed_boundary_condition_outlet_id([33999], z, nodata_value=-9999.) # This is LC3, works!
+#rmg.set_watershed_boundary_condition_outlet_id((35680), z, nodata_value=-9999.) # This is LC1 (work in progress), out let is row 218, col 93
 
-rmg.set_watershed_boundary_condition_outlet_coords((218, 93), z, nodata_value=-9999.) # This is LC1 (work in progress), out let is row 218, col 93
-
-outlet = rmg.set_watershed_boundary_condition(z, remove_disconnected = True, nodata_value=-9999., return_outlet_id=True) #1382.996
+outlet = rmg.set_watershed_boundary_condition(z, remove_disconnected = True, nodata_value=-9999.00, return_outlet_id=True) 
 print(outlet)
 
-""" Create bed and flow initial condition, remember that n is mannings roughness coefficient"""
-rmg['link']['bed_surface__roughness'] = np.zeros(rmg.number_of_links) + n  
+"""
+Defines variables to store data and run the experiment. Also creates a folder
+called /output where figures and data is stored. All figures are deleted from 
+the folder after each model run.
+"""
 
-""" this is precip stuff, kinda confused about unit conversions, make sure to
-go back and double check"""
-precipitation = pd.read_excel(rainfallFile)
-precip_time=precipitation.values[:,0]
-precip_mmhr=precipitation.values[:,1]
-precip_ms = precip_mmhr * (2.77778 * 10 ** -7)  # Converts mm/hr to m/s
-precip_index = 0                                # current index for time
-
-""" Defines variables to store data and run the experiment """
 storeNow = True
 plotNow = True                          # Used to save the plot at time zero
 check_tmax = True
@@ -174,8 +179,10 @@ if os.path.exists(outputFolder):
     shutil.rmtree(outputFolder)     
 os.mkdir(outputFolder)
 
-"""  runs the experiment """
-t = 0                                   # Initializates the variable
+"""  
+runs the experiment 
+"""
+t = 0
 while t < tmax:
     
     rbd.t = t           # Current simulation time
@@ -187,7 +194,7 @@ while t < tmax:
     else:
         rmg['node']['rainfall__intensity'] = np.zeros(rmg.number_of_nodes) + precip_ms[precip_index+1]
     
-    of.overland_flow() # Runs overland flow for one time step
+    of.overland_flow()  # Runs overland flow for one time step
 
     rbd.run_one_step()  # Runs riverBedDynamics for one time step
     
@@ -225,8 +232,6 @@ while t < tmax:
               np.round(of.dt,1),'. Adaptive time =',np.round(of._adaptive_dt,1),' s - Saving plot \n')
         
         # Water depth plot
-        
-        """Good scale bards for 1000yr 60m long storm is 0-5m"""
         plot_name='Surface water depth [m] at ' + str(np.round(t,0)) + ' sec'
         imshow_grid(rmg, 'surface_water__depth',cmap='Blues',vmin=0, vmax=1, plot_name=plot_name)
         output='depth_'+str(np.round(t,0))+'.png'
@@ -260,12 +265,24 @@ while t < tmax:
     else:
         t = round(t + of.dt, dtPrecision)  
         
-"""we need to make some figs... 
-1) time and storm size it takes to move minimum, avg, max sediment in different channel sections
-2) percent of material removed from different channel sections for different storms
-3) material size removed (min, max, avg) for different different storms in different slope, channel steepness, and drainage area 
-4) material deposited (min, max, avg) for different slope, chi, and drainage area 
-
+"""
+we need to make some figs... 
+1) I think first we find storm charictoristics like when in the storm erosion happens
+   track a few storms of different intensities and durations and when erosion happens
+   at a 6 different cells (each steepness and sediment size) for a few different grain sizes.
     
-    BUT first plot info about hydrographs and shear stresses produced for different storms
+2) storm charictorics it takes to move minimum, avg, max sediment in the same 6  
+   cells for the 4 different models and maybe the high and low res dem.
+   
+3) how much erosion and depostion total in the 6 different sections total. like
+   plus and minus elevation on y axis, and on x have RI.
+
+4) Max sediment diameter moved (out of system, or just in general) on y axis, and 
+   RI on the x for the 6 different sections.
+    
+5) 
+   a. material size removed (min, max, avg) for different different storms at different 
+   channel steepness.
+   b. material size deposited (min, max, avg) for different steepness 
+   c.  
 """
