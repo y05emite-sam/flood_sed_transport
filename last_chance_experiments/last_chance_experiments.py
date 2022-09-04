@@ -21,6 +21,8 @@ from matplotlib import pyplot as plt
 from landlab.components import OverlandFlowSpatiallyVariableInputs, RiverBedDynamics
 from landlab.io import read_esri_ascii
 from landlab import imshow_grid
+#from landlab import RasterModelGrid as mg
+
 
 """
 First we import the DEM. There are two DEMS called:
@@ -109,17 +111,18 @@ from LC3 for a 1000yr RI storm with a duration of one day.
 dtPrecision = 3               # Avoids rounding errors
 max_dt = 1                    # Overland flow will use the min time step between this value and the automatically calculated. Use seconds.
 tPlot = 1000                  # Plots will be obtained every this seconds
-storeData = 1000              # Stores results every this time
-tmax = 2000 + max_dt          # Maximum simulation time, adding max_dt ensures that the last time is stored
+storeData = 5                 # Stores results every this time
+tmax = 4000 + max_dt          # Maximum simulation time, adding max_dt ensures that the last time is stored
 n = 0.03                      # Manning's n      
 
 """
-Link and node at base of DEM, where samples will be collected, i think mikey 
-changed these numbers? IDK but these need fixing probably
+Links and nodes where we will sample. For now I am going to choose 3 links and 
+nodes in the middle of each section of LC3. maybe in the future I will 
 """
 #UNDER CONSTRUCTION
-link_to_sample = 698
-node_to_sample = 300
+
+link_to_sample = 64912
+node_to_sample = 32457
 
 """
 This removes previous figs from the output folder. 
@@ -138,8 +141,10 @@ rmg.add_zeros('bed_surface__roughness', at = 'link')
 rmg.add_zeros('surface_water__depth', at = 'node')
 rmg.add_zeros('rainfall__intensity', at = 'node')
 rmg['link']['bed_surface__roughness'] = np.zeros(rmg.number_of_links) + n
-"""
+#rmg.add_zeros('surface_water__shearStress', at = 'link')
 
+
+"""
 Instatiates the two components, note that RiverBedDynamics can be changed to 
 a model other than MPM 
 """
@@ -151,7 +156,6 @@ This is under construction. As it stands, it works for LC3. Need to figure out L
 
 Update: I am gonna remake both 'sheds' using the 10m and the 1m DEM, and just use the auto way
 """
-
 #rmg.set_watershed_boundary_condition_outlet_id([33999], z, nodata_value=-9999.) # This is LC3, works!
 #rmg.set_watershed_boundary_condition_outlet_id((35680), z, nodata_value=-9999.) # This is LC1 (work in progress), out let is row 218, col 93
 
@@ -195,10 +199,11 @@ while t < tmax:
         rmg['node']['rainfall__intensity'] = np.zeros(rmg.number_of_nodes) + precip_ms[precip_index+1]
     
     of.overland_flow()  # Runs overland flow for one time step
-
     rbd.run_one_step()  # Runs riverBedDynamics for one time step
     
-    ## Stores results
+    """
+    Saves data of to 6 different txt files from link and node to sample specified earlier)
+    """
     storeData = round(storeData-of.dt, dtPrecision)
     if (storeData <=0) or storeNow:
         os.chdir(outputFolder)
@@ -231,6 +236,9 @@ while t < tmax:
         print('Elapsed time :',np.round(t,1),' s. Current dt =',\
               np.round(of.dt,1),'. Adaptive time =',np.round(of._adaptive_dt,1),' s - Saving plot \n')
         
+        """
+        Here we generate plots
+        """
         # Water depth plot
         plot_name='Surface water depth [m] at ' + str(np.round(t,0)) + ' sec'
         imshow_grid(rmg, 'surface_water__depth',cmap='Blues',vmin=0, vmax=1, plot_name=plot_name)
@@ -249,7 +257,21 @@ while t < tmax:
         ZVar = rmg.at_node["topographic__elevation"] - rmg.at_node['topographic__elevation_original'] 
         imshow_grid(rmg, ZVar,cmap='RdGy',plot_name=plot_name)
         output='topographicVariation_'+str(np.round(t,0))+'.png'
+        plt.savefig(output,dpi=300); plt.close()  
+        
+        """ UNDER CONSTRUCTION: NEED TO MAP LINKS TO NODES- HOW?
+        #Shear stress map - not sure I need this? you gon
+        plot_name='Shear stress [Pa] at ' + str(np.round(t,0)) + ' sec' 
+        
+        Zstress = rmg.at_link["surface_water__shearStress"]
+        q=Zstress
+        mg.map_link_vector_to_nodes(q)
+        
+        imshow_grid(rmg, Zstress, cmap='RdGy',plot_name=plot_name)
+        output='shearStress_'+str(np.round(t,0))+'.png'
         plt.savefig(output,dpi=300); plt.close()    
+        """
+
 
         plotNow = False
         tPlot = tPlotOrg
@@ -265,6 +287,26 @@ while t < tmax:
     else:
         t = round(t + of.dt, dtPrecision)  
         
+"""nodes and links figs UNDER CONSTRUCTION     
+COME BACK TO THIS
+#1) Storm Duration vs a. topographic variation, b. bedload rate, dischage
+
+data = np.loadtxt('output/output1_node_surface_water__depth.txt')
+nodesToSample = np.arange(rmg.number_of_node_columns+1,2*rmg.number_of_node_columns)
+x = np.arange(0,(rmg.number_of_node_columns-1)*rmg.dx,rmg.dx)
+
+hSample = data[-1,nodesToSample]
+
+plt.figure(1)
+plt.plot(x, hSample, color='red', label='Our Model')
+plt.legend()
+plt.ylabel('Water depth (m)')
+plt.xlabel('x (x)')
+plt.ylim(0,2.5)
+plt.xlim(0,3700)
+plt.title('Water depth at 3600 s')
+"""
+
 """
 we need to make some figs... 
 1) I think first we find storm charictoristics like when in the storm erosion happens
@@ -285,4 +327,7 @@ we need to make some figs...
    channel steepness.
    b. material size deposited (min, max, avg) for different steepness 
    c.  
+   
+links to help with plotting
+https://landlab.readthedocs.io/en/master/user_guide/overland_flow_user_guide.html
 """
