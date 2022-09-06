@@ -112,7 +112,7 @@ dtPrecision = 3               # Avoids rounding errors
 max_dt = 1                    # Overland flow will use the min time step between this value and the automatically calculated. Use seconds.
 tPlot = 1000                  # Plots will be obtained every this seconds
 storeData = 5                 # Stores results every this time
-tmax = 4000 + max_dt          # Maximum simulation time, adding max_dt ensures that the last time is stored
+tmax = 1000 + max_dt          # Maximum simulation time, adding max_dt ensures that the last time is stored
 n = 0.03                      # Manning's n      
 
 """
@@ -120,10 +120,13 @@ Links and nodes where we will sample. For now I am going to choose 3 links and
 nodes in the middle of each section of LC3. maybe in the future I will 
 """
 #UNDER CONSTRUCTION
-
+"""
 link_to_sample = 64912
 node_to_sample = 32457
-
+"""
+# These are NOT 'real' links and nodes
+link_to_sample = np.array([299, 698,1496,2694,32221])
+node_to_sample = np.array([300,700,16102])
 """
 This removes previous figs from the output folder. 
 """
@@ -186,6 +189,9 @@ os.mkdir(outputFolder)
 """  
 runs the experiment 
 """
+hydrograph_time = []
+hydrograph_time.append(precip_time / 3600.) # convert seconds to hours
+
 t = 0
 while t < tmax:
     
@@ -286,11 +292,19 @@ while t < tmax:
         check_tmax = False
     else:
         t = round(t + of.dt, dtPrecision)  
-        
-"""nodes and links figs UNDER CONSTRUCTION     
+"""        
+nodes and links figs UNDER CONSTRUCTION     
 COME BACK TO THIS
-#1) Storm Duration vs a. topographic variation, b. bedload rate, dischage
 
+#1) I think first we find storm charictoristics like when during a storm "work" happens.
+    so here we track a few storms of different intensities and durations and when erosion happens
+    at 6 different cells (1 from each channel section)
+    OR maybe more then 1 cell in each "section"? How will i choose cells?
+   
+    Storm Duration on x axis vs a. topographic variation, b. bedload rate, and c. dischage 
+    for 4 different models and maaaybe high and low res DEM
+  """  
+  
 data = np.loadtxt('output/output1_node_surface_water__depth.txt')
 nodesToSample = np.arange(rmg.number_of_node_columns+1,2*rmg.number_of_node_columns)
 x = np.arange(0,(rmg.number_of_node_columns-1)*rmg.dx,rmg.dx)
@@ -305,23 +319,24 @@ plt.xlabel('x (x)')
 plt.ylim(0,2.5)
 plt.xlim(0,3700)
 plt.title('Water depth at 3600 s')
+
+"""
+2) storm charictorics (duration/intensity) it takes to move D16, D50, D90, and 
+   max, in the 6 (or more?) cells for the 4 different models and maybe the high
+   and low res dem.
 """
 
 """
-we need to make some figs... 
-1) I think first we find storm charictoristics like when in the storm erosion happens
-   track a few storms of different intensities and durations and when erosion happens
-   at a 6 different cells (each steepness and sediment size) for a few different grain sizes.
-    
-2) storm charictorics it takes to move minimum, avg, max sediment in the same 6  
-   cells for the 4 different models and maybe the high and low res dem.
-   
 3) how much erosion and depostion total in the 6 different sections total. like
    plus and minus elevation on y axis, and on x have RI.
-
+"""
+   
+"""
 4) Max sediment diameter moved (out of system, or just in general) on y axis, and 
-   RI on the x for the 6 different sections.
-    
+   RI on the x for the 6 different sections 
+"""
+
+"""
 5) 
    a. material size removed (min, max, avg) for different different storms at different 
    channel steepness.
