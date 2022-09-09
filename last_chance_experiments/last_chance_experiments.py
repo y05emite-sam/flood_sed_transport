@@ -69,7 +69,7 @@ The corresponding GSD info for LC1 is...
     bins) this one is called LC3_grain_size_dist_higher_res.xlsx                                                
 """
 
-gsd = pd.read_excel('GSDs/LC1_grain_size_dist.xlsx', sheet_name='GSD', skiprows=0).values
+gsd = pd.read_excel('GSDs/LC1_grain_size_dist_higher_res.xlsx', sheet_name='GSD', skiprows=0).values
 bedGSDLocationRaster = 'GSDs/LC1_gsd_locations.txt'     
 (rmg0, gsd_loc) = read_esri_ascii(bedGSDLocationRaster)
 rmg['node']['bed_surface__grainSizeDistribution_location'] = gsd_loc 
@@ -94,7 +94,7 @@ most likely be one day. The lowest RI is 1 and the highest is 1000. Feel free
 to open the climate folder to decide on a storm to run!
 """
 
-rainfallFile = 'climate/5min_1yrRI_storm.xlsx'
+rainfallFile = 'climate/5min_1000yrRI_storm.xlsx'
 precipitation = pd.read_excel(rainfallFile)  
 precip_time=precipitation.values[:,0]
 precip_mmhr=precipitation.values[:,1]
