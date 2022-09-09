@@ -32,7 +32,7 @@ First we import the DEM. There are two DEMS called:
 We then generate a slope map to make sure the DEM was properly imported
 """
 
-watershed_dem = 'DEMs/lc3_dem.txt' 
+watershed_dem = 'DEMs/lc1_dem.txt' 
 (rmg, z) = read_esri_ascii(watershed_dem, name='topographic__elevation')
 
 rmg.at_node['topographic__slope'] = rmg.calc_slope_at_node(elevs='topographic__elevation')
@@ -69,8 +69,8 @@ The corresponding GSD info for LC1 is...
     bins) this one is called LC3_grain_size_dist_higher_res.xlsx                                                
 """
 
-gsd = pd.read_excel('GSDs/LC3_grain_size_dist_higher_res.xlsx', sheet_name='GSD', skiprows=0).values
-bedGSDLocationRaster = 'GSDs/LC3_gsd_locations.txt'     
+gsd = pd.read_excel('GSDs/LC1_grain_size_dist.xlsx', sheet_name='GSD', skiprows=0).values
+bedGSDLocationRaster = 'GSDs/LC1_gsd_locations.txt'     
 (rmg0, gsd_loc) = read_esri_ascii(bedGSDLocationRaster)
 rmg['node']['bed_surface__grainSizeDistribution_location'] = gsd_loc 
 
@@ -94,7 +94,7 @@ most likely be one day. The lowest RI is 1 and the highest is 1000. Feel free
 to open the climate folder to decide on a storm to run!
 """
 
-rainfallFile = 'climate/5min_1000yrRI_storm.xlsx'
+rainfallFile = 'climate/5min_1yrRI_storm.xlsx'
 precipitation = pd.read_excel(rainfallFile)  
 precip_time=precipitation.values[:,0]
 precip_mmhr=precipitation.values[:,1]
@@ -110,9 +110,9 @@ from LC3 for a 1000yr RI storm with a duration of one day.
 
 dtPrecision = 3               # Avoids rounding errors
 max_dt = 1                    # Overland flow will use the min time step between this value and the automatically calculated. Use seconds.
-tPlot = 1000                  # Plots will be obtained every this seconds
+tPlot = 200                  # Plots will be obtained every this seconds
 storeData = 5                 # Stores results every this time
-tmax = 1000 + max_dt          # Maximum simulation time, adding max_dt ensures that the last time is stored
+tmax = 4000 + max_dt          # Maximum simulation time, adding max_dt ensures that the last time is stored
 n = 0.03                      # Manning's n      
 
 """
@@ -127,6 +127,7 @@ node_to_sample = 32457
 # These are NOT 'real' links and nodes
 link_to_sample = np.array([299, 698,1496,2694,32221])
 node_to_sample = np.array([300,700,16102])
+
 """
 This removes previous figs from the output folder. 
 """
@@ -152,7 +153,7 @@ Instatiates the two components, note that RiverBedDynamics can be changed to
 a model other than MPM 
 """
 of = OverlandFlowSpatiallyVariableInputs(rmg, steep_slopes=True, alpha = 0.3)
-rbd = RiverBedDynamics(rmg , gsd = gsd, variableCriticalShearStress = True, bedloadEq='MPM')
+rbd = RiverBedDynamics(rmg , gsd = gsd, variableCriticalShearStress = True, bedloadEq='parker1990')
 
 """ 
 This is under construction. As it stands, it works for LC3. Need to figure out LC1.
@@ -218,18 +219,33 @@ while t < tmax:
         with open("output0_links_surface_water__discharge.txt", "ab") as f:
             np.savetxt(f, data,'%.3f')
         data = np.hstack([t,(of._h[node_to_sample].T)])
+        
+        data = np.reshape(data,[1,data.shape[0]])
+
         with open("output1_node_surface_water__depth.txt", "ab") as f:
             np.savetxt(f, data,'%.3f')      
         data = np.hstack([t,np.abs(rbd._tau[link_to_sample].T)])
+        
+        data = np.reshape(data,[1,data.shape[0]])
+
         with open("output2_link_surface_water__shearStress.txt", "ab") as f:
             np.savetxt(f, data,'%.3f')   
         data = np.hstack([t,rmg.at_node["topographic__elevation"][node_to_sample].T])
+        
+        data = np.reshape(data,[1,data.shape[0]])
+
         with open("output3_node_topographic__elevation.txt", "ab") as f:
             np.savetxt(f, data,'%.3f') 
         data = np.hstack([t,rmg.at_link["bed_surface__medianSize"][link_to_sample].T])
+        
+        data = np.reshape(data,[1,data.shape[0]])
+
         with open("output4_link_bed_surface__medianSize.txt", "ab") as f:
             np.savetxt(f, data,'%.3f')
         data = np.hstack([t,rmg.at_link['sediment_transport__bedloadRate'][link_to_sample].T])
+        
+        data = np.reshape(data,[1,data.shape[0]])
+
         with open("output5_links_sediment_transport__bedloadRate.txt", "ab") as f:
             np.savetxt(f, data,'%.5f')  
         storeData = round(storeDataOrg, dtPrecision)
@@ -309,7 +325,7 @@ data = np.loadtxt('output/output1_node_surface_water__depth.txt')
 nodesToSample = np.arange(rmg.number_of_node_columns+1,2*rmg.number_of_node_columns)
 x = np.arange(0,(rmg.number_of_node_columns-1)*rmg.dx,rmg.dx)
 
-hSample = data[-1,nodesToSample]
+hSample = data[-1, nodesToSample]
 
 plt.figure(1)
 plt.plot(x, hSample, color='red', label='Our Model')
