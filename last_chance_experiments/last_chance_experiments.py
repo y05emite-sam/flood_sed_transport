@@ -32,7 +32,7 @@ First we import the DEM. There are two DEMS called:
 We then generate a slope map to make sure the DEM was properly imported
 """
 
-watershed_dem = 'DEMs/lc1_dem.txt' 
+watershed_dem = 'DEMs/lc3_dem.txt' 
 (rmg, z) = read_esri_ascii(watershed_dem, name='topographic__elevation')
 
 rmg.at_node['topographic__slope'] = rmg.calc_slope_at_node(elevs='topographic__elevation')
@@ -69,8 +69,8 @@ The corresponding GSD info for LC1 is...
     bins) this one is called LC3_grain_size_dist_higher_res.xlsx                                                
 """
 
-gsd = pd.read_excel('GSDs/LC1_grain_size_dist_higher_res.xlsx', sheet_name='GSD', skiprows=0).values
-bedGSDLocationRaster = 'GSDs/LC1_gsd_locations.txt'     
+gsd = pd.read_excel('GSDs/LC3_grain_size_dist_higher_res.xlsx', sheet_name='GSD', skiprows=0).values
+bedGSDLocationRaster = 'GSDs/LC3_gsd_locations.txt'     
 (rmg0, gsd_loc) = read_esri_ascii(bedGSDLocationRaster)
 rmg['node']['bed_surface__grainSizeDistribution_location'] = gsd_loc 
 
@@ -153,7 +153,7 @@ Instatiates the two components, note that RiverBedDynamics can be changed to
 a model other than MPM 
 """
 of = OverlandFlowSpatiallyVariableInputs(rmg, steep_slopes=True, alpha = 0.3)
-rbd = RiverBedDynamics(rmg , gsd = gsd, variableCriticalShearStress = True, bedloadEq='parker1990')
+rbd = RiverBedDynamics(rmg , gsd = gsd, variableCriticalShearStress = True, bedloadEq='willcockandcrowe')
 
 """ 
 This is under construction. As it stands, it works for LC3. Need to figure out LC1.
