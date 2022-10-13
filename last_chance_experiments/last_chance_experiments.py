@@ -18,10 +18,12 @@ import copy
 import os
 import shutil
 from matplotlib import pyplot as plt
-from landlab.components import OverlandFlowSpatiallyVariableInputs, RiverBedDynamics
+from landlab.components import OverlandFlowSpatiallyVariableInputs, RiverBedDynamics, SinkFiller
 from landlab.io import read_esri_ascii
 from landlab import imshow_grid
+
 #from landlab import RasterModelGrid as mg
+
 
 
 """
@@ -38,7 +40,11 @@ watershed_dem = 'DEMs/lc3_dem.txt'
 rmg.at_node['topographic__slope'] = rmg.calc_slope_at_node(elevs='topographic__elevation')
 imshow_grid(rmg,'topographic__slope');
 plt.show()
+"""
+sf = SinkFiller(rmg, routing='D4', apply_slope=True, fill_slope=1.e-5)
+sf.fill_pits()
 
+"""
 """
 Second, I explain grain sizes. They live in the '/GSDs' folder. Any user can go
 take a look at them. As this project moves formward, I will find a place to
@@ -209,7 +215,7 @@ while t < tmax:
     rbd.run_one_step()  # Runs riverBedDynamics for one time step
     
     """
-    Saves data of to 6 different txt files from link and node to sample specified earlier)
+    Saves data of to 6 different txt files from link and node to sample specified earlier
     """
     storeData = round(storeData-of.dt, dtPrecision)
     if (storeData <=0) or storeNow:
