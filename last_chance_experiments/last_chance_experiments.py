@@ -40,11 +40,15 @@ watershed_dem = 'DEMs/lc3_dem.txt'
 rmg.at_node['topographic__slope'] = rmg.calc_slope_at_node(elevs='topographic__elevation')
 imshow_grid(rmg,'topographic__slope');
 plt.show()
+
+
 """
 sf = SinkFiller(rmg, routing='D4', apply_slope=True, fill_slope=1.e-5)
 sf.fill_pits()
 
 """
+
+
 """
 Second, I explain grain sizes. They live in the '/GSDs' folder. Any user can go
 take a look at them. As this project moves formward, I will find a place to
