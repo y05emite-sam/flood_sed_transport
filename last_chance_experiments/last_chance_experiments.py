@@ -18,7 +18,7 @@ import copy
 import os
 import shutil
 from matplotlib import pyplot as plt
-from landlab.components import OverlandFlowSpatiallyVariableInputs, RiverBedDynamics, SinkFiller
+from landlab.components import OverlandFlowSpatiallyVariableInputs, RiverBedDynamics, SinkFiller, FlowAccumulator
 from landlab.io import read_esri_ascii
 from landlab import imshow_grid
 
@@ -41,13 +41,19 @@ rmg.at_node['topographic__slope'] = rmg.calc_slope_at_node(elevs='topographic__e
 imshow_grid(rmg,'topographic__slope');
 plt.show()
 
+rmg.set_watershed_boundary_condition(z,nodata_value=-9999.)
 
-"""
 sf = SinkFiller(rmg, routing='D4', apply_slope=True, fill_slope=1.e-5)
 sf.fill_pits()
 
-"""
+fa = FlowAccumulator(
+     rmg,
+     'topographic__elevation',
+     flow_director='FlowDirectorSteepest'
+)
 
+imshow_grid(rmg, z)
+plt.show()
 
 """
 Second, I explain grain sizes. They live in the '/GSDs' folder. Any user can go
@@ -60,12 +66,12 @@ some of these comments will be readmes or some folder explanation or whatever.
 Anyways, there are 3 excels which represent real GSDs and were measured with 
 drone photos. 
 
-Column 1, in the LC3 gsd file, are b axis diameters for the 'shallow' channel 
-section (above 1560m elevation), 2 are diameters for 1530m - 1560m elevation,
-and 3 are diameters for steep elevations lower than 1530. 
+Column 0, in the LC3 gsd file, are b axis diameters for the 'shallow' channel 
+section (above 1560m elevation), 1 are diameters for 1530m - 1560m elevation,
+and 2 are diameters for steep elevations lower than 1530. 
 
-For LC1 column 1 are diameters for elevations above 1560 m, column 2 are diameters
-for elevations 1540 - 1560m, and column 3 are grain size diameters in elevations
+For LC1 column 0 are diameters for elevations above 1560 m, column 1 are diameters
+for elevations 1540 - 1560m, and column 2 are grain size diameters in elevations
 lower than 1540 m in elevation.
     
 The corresponding GSD info for LC1 is...
@@ -163,7 +169,7 @@ Instatiates the two components, note that RiverBedDynamics can be changed to
 a model other than MPM 
 """
 of = OverlandFlowSpatiallyVariableInputs(rmg, steep_slopes=True, alpha = 0.3)
-rbd = RiverBedDynamics(rmg , gsd = gsd, variableCriticalShearStress = True, bedloadEq='willcockandcrowe')
+rbd = RiverBedDynamics(rmg , gsd = gsd, variableCriticalShearStress = True, bedloadEq='WilcockAndCrowe')
 
 """ 
 This is under construction. As it stands, it works for LC3. Need to figure out LC1.
@@ -175,6 +181,8 @@ Update: I am gonna remake both 'sheds' using the 10m and the 1m DEM, and just us
 
 outlet = rmg.set_watershed_boundary_condition(z, remove_disconnected = True, nodata_value=-9999.00, return_outlet_id=True) 
 print(outlet)
+
+
 
 """
 Defines variables to store data and run the experiment. Also creates a folder
