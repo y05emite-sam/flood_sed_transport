@@ -34,7 +34,7 @@ First we import the DEM. There are two DEMS called:
 We then generate a slope map to make sure the DEM was properly imported
 """
 
-watershed_dem = 'DEMs/lc3_dem.txt' 
+watershed_dem = 'DEMs/lc1dem_rotate.txt' 
 (rmg, z) = read_esri_ascii(watershed_dem, name='topographic__elevation')
 
 rmg.at_node['topographic__slope'] = rmg.calc_slope_at_node(elevs='topographic__elevation')
@@ -54,6 +54,7 @@ fa = FlowAccumulator(
 
 imshow_grid(rmg, z)
 plt.show()
+
 
 """
 Second, I explain grain sizes. They live in the '/GSDs' folder. Any user can go
@@ -85,8 +86,8 @@ The corresponding GSD info for LC1 is...
     bins) this one is called LC3_grain_size_dist_higher_res.xlsx                                                
 """
 
-gsd = pd.read_excel('GSDs/LC3_grain_size_dist_higher_res.xlsx', sheet_name='GSD', skiprows=0).values
-bedGSDLocationRaster = 'GSDs/LC3_gsd_locations.txt'     
+gsd = pd.read_excel('GSDs/LC1_grain_size_dist.xlsx', sheet_name='GSD', skiprows=0).values
+bedGSDLocationRaster = 'GSDs/LC1dem_rotate_gsdmap.txt'     
 (rmg0, gsd_loc) = read_esri_ascii(bedGSDLocationRaster)
 rmg['node']['bed_surface__grainSizeDistribution_location'] = gsd_loc 
 
@@ -125,7 +126,7 @@ from LC3 for a 1000yr RI storm with a duration of one day.
 """
 
 dtPrecision = 3               # Avoids rounding errors
-max_dt = 1                    # Overland flow will use the min time step between this value and the automatically calculated. Use seconds.
+max_dt = 0.5                    # Overland flow will use the min time step between this value and the automatically calculated. Use seconds.
 tPlot = 200                  # Plots will be obtained every this seconds
 storeData = 5                 # Stores results every this time
 tmax = 4000 + max_dt          # Maximum simulation time, adding max_dt ensures that the last time is stored
