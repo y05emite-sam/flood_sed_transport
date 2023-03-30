@@ -34,15 +34,15 @@ First we import the DEM. There are two DEMS called:
 We then generate a slope map to make sure the DEM was properly imported
 """
 
-watershed_dem = 'DEMs/lc1dem_rotate.txt' 
+watershed_dem = 'DEMs/lc3_dem.txt' 
 (rmg, z) = read_esri_ascii(watershed_dem, name='topographic__elevation')
 
 rmg.at_node['topographic__slope'] = rmg.calc_slope_at_node(elevs='topographic__elevation')
 imshow_grid(rmg,'topographic__slope');
 plt.show()
 
-rmg.set_watershed_boundary_condition(z,nodata_value=-9999.)
-
+rmg.set_watershed_boundary_condition(z, nodata_value=-9999)
+"""
 sf = SinkFiller(rmg, routing='D4', apply_slope=True, fill_slope=1.e-5)
 sf.fill_pits()
 
@@ -55,7 +55,7 @@ fa = FlowAccumulator(
 imshow_grid(rmg, z)
 plt.show()
 
-
+"""
 """
 Second, I explain grain sizes. They live in the '/GSDs' folder. Any user can go
 take a look at them. As this project moves formward, I will find a place to
@@ -86,8 +86,8 @@ The corresponding GSD info for LC1 is...
     bins) this one is called LC3_grain_size_dist_higher_res.xlsx                                                
 """
 
-gsd = pd.read_excel('GSDs/LC1_grain_size_dist.xlsx', sheet_name='GSD', skiprows=0).values
-bedGSDLocationRaster = 'GSDs/LC1dem_rotate_gsdmap.txt'     
+gsd = pd.read_excel('GSDs/LC3_grain_size_dist.xlsx', sheet_name='GSD', skiprows=0).values
+bedGSDLocationRaster = 'GSDs/LC3_grain_size_dist_higher_res.xlsx'     
 (rmg0, gsd_loc) = read_esri_ascii(bedGSDLocationRaster)
 rmg['node']['bed_surface__grainSizeDistribution_location'] = gsd_loc 
 
@@ -378,6 +378,8 @@ plt.title('Water depth at 3600 s')
    b. material size deposited (min, max, avg) for different steepness 
    c.  
    
+6) find largest boulder which can move for each channel with distance down stream.
+        a. this will show the effect that drainage area has on steepness 
 links to help with plotting
 https://landlab.readthedocs.io/en/master/user_guide/overland_flow_user_guide.html
 """
