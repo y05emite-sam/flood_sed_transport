@@ -12,16 +12,17 @@ notebook tutorial for the new river bed dynamics component
 Here we imporant all necessary components and other stuff
 """
 
-import numpy as np
-import pandas as pd
 import copy
-import os
-import shutil
-from matplotlib import pyplot as plt
-from landlab.components import OverlandFlowSpatiallyVariableInputs, RiverBedDynamics, SinkFiller, FlowAccumulator
-from landlab.io import read_esri_ascii
-from landlab import imshow_grid
 
+import matplotlib.cm as cm
+import numpy as np
+from IPython.display import clear_output, display
+from matplotlib import pyplot as plt
+
+from landlab import imshow_grid
+from landlab.components import OverlandFlow, RiverBedDynamics
+from landlab.grid.mappers import map_mean_of_link_nodes_to_link
+from landlab.io import read_esri_ascii
 #from landlab import RasterModelGrid as mg
 
 
