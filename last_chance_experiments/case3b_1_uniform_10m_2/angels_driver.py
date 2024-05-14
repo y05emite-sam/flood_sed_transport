@@ -87,6 +87,20 @@ plot_time_interval_original = copy.deepcopy(plot_time_interval)         # A copy
 save_data_time_interval_original=copy.deepcopy(save_data_time_interval) # A copy of save_data_time_interval
 topographic__elevation_original = copy.deepcopy(grid["node"]["topographic__elevation"]) # A copy of the original topographic__elevation
 
+""" Put a thin layer of water """
+if 'surface_water__depth' not in grid.at_node:
+    grid.add_zeros('surface_water__depth', at='node')
+
+# Add a thin layer of water (e.g., 1 mm)
+grid.at_node['surface_water__depth'] += 0.001  # water depth in meters
+
+# Initialize the OverlandFlow component
+of = OverlandFlow(grid, mannings_n=0.025, rainfall_intensity=0.0, alpha=0.25, steep_slopes=False, theta=1.0)
+
+# Check and adjust dt
+if of.dt is None or np.isnan(of.dt):
+    of.dt = 0.1  # Set an initial timestep if not automatically calculated
+
 progress0 = 0 # Initializes the variable
 while t < sim_max_t:
     
